@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Räknespelet - Prinsessan Chloes Matteäventyr</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lekfullt och tydligt typsnitt för barn -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background: linear-gradient(135deg, #fdf2f8 0%, #f3e8ff 35%, #e0f2fe 70%, #fef9c3 100%);
+            min-height: 100dvh;
+            margin: 0;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Magiska flytande bakgrundsdekorationer */
+        .floating-bg {
+            position: fixed;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.45;
+            animation: floatSlow 8s ease-in-out infinite;
+        }
+
+        @keyframes floatSlow {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-16px) rotate(6deg); }
+        }
+
+        /* Knappeffekter med mjuk 3D-känsla */
+        .bubble-btn {
+            transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.15s ease, opacity 0.25s ease;
+            box-shadow: 0 6px 0 rgba(192, 132, 252, 0.35), 0 10px 20px rgba(0, 0, 0, 0.06);
+        }
+
+        .bubble-btn:active:not(:disabled) {
+            transform: translateY(4px) scale(0.97);
+            box-shadow: 0 2px 0 rgba(192, 132, 252, 0.35), 0 4px 8px rgba(0, 0, 0, 0.06);
+        }
+
+        .bubble-btn:hover:not(:disabled) {
+            transform: translateY(-2px) scale(1.02);
+        }
+
+        /* Mjuk skakning vid fel svar */
+        @keyframes gentleShake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-8px) rotate(-2deg); }
+            40% { transform: translateX(8px) rotate(2deg); }
+            60% { transform: translateX(-6px) rotate(-1deg); }
+            80% { transform: translateX(6px) rotate(1deg); }
+        }
+
+        .shake-wrong {
+            animation: gentleShake 0.45s ease-in-out;
+            opacity: 0.42 !important;
+            background: #f1f5f9 !important;
+            border-color: #cbd5e1 !important;
+            color: #94a3b8 !important;
+            box-shadow: none !important;
+            cursor: default;
+        }
+
+        /* Studsande animation vid rätt svar */
+        @keyframes celebratePop {
+            0% { transform: scale(1); }
+            40% { transform: scale(1.16) rotate(-3deg); }
+            70% { transform: scale(0.96) rotate(2deg); }
+            100% { transform: scale(1.05); }
+        }
+
+        .pop-correct {
+            animation: celebratePop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+            background: linear-gradient(135deg, #86efac 0%, #4ade80 100%) !important;
+            border-color: #22c55e !important;
+            color: #ffffff !important;
+            box-shadow: 0 6px 0 #16a34a, 0 12px 24px rgba(34, 197, 94, 0.35) !important;
+        }
+
+        /* Räkneobjektens framträdande och klick-studs */
+        @keyframes itemAppear {
+            0% { transform: scale(0) rotate(-15deg); opacity: 0; }
+            70% { transform: scale(1.12) rotate(4deg); opacity: 1; }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+
+        .count-item {
+            animation: itemAppear 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+            cursor: pointer;
+            transition: transform 0.15s ease;
+        }
+
+        .count-item:active, .count-item.tapped {
+            transform: scale(1.3) rotate(10deg);
+        }
+
+        /* Enhörningens galopp på framstegsmätaren */
+        .unicorn-runner {
+            transition: left 0.65s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* Stjärnglitter */
+        @keyframes starTwinkle {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            50% { transform: scale(1.22) rotate(12deg); }
+        }
+
+        .star-earned {
+            animation: starTwinkle 1.8s ease-in-out infinite;
+        }
+
+        /* Konfetti canvas */
+        #confetti-canvas {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 50;
+        }
+    </style>
+</head>
+<body class="text-slate-800 relative">
+
+    <!-- Bakgrundsdekorationer -->
+    <div class="floating-bg text-5xl sm:text-6xl top-12 left-6" style="animation-delay: 0s;">☁️</div>
+    <div class="floating-bg text-4xl sm:text-5xl top-24 right-10" style="animation-delay: 1.5s;">✨</div>
+    <div class="floating-bg text-5xl sm:text-6xl bottom-16 left-10" style="animation-delay: 2.5s;">🌈</div>
+    <div class="floating-bg text-4xl sm:text-5xl bottom-24 right-8" style="animation-delay: 3.5s;">⭐</div>
+
+    <!-- Konfetti-canvas för firande -->
+    <canvas id="confetti-canvas"></canvas>
+
+    <!-- STARTSKÄRM -->
+    <div id="start-screen" class="relative z-20 flex-1 flex flex-col items-center justify-center max-w-2xl w-full mx-auto px-4 py-8 text-center">
+        <div class="bg-white/90 backdrop-blur-md rounded-[2.5rem] p-7 sm:p-10 shadow-xl border-4 border-pink-200 w-full">
+            <div class="text-6xl sm:text-7xl mb-3 animate-bounce">🦄🌈👑</div>
+            <h1 class="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 bg-clip-text text-transparent mb-2">
+                Räknespelet
+            </h1>
+            <p class="text-lg sm:text-xl text-purple-500 font-semibold mb-6">
+                Prinsessan Chloes Matteäventyr
+            </p>
+
+            <!-- Stjärnstatus på startskärmen -->
+            <div class="inline-flex items-center gap-2 bg-amber-50 border-2 border-amber-200 px-5 py-2.5 rounded-3xl mb-7 shadow-inner">
+                <span class="text-2xl star-earned">⭐</span>
+                <span class="text-amber-700 font-semibold">Dina stjärnor:</span>
+                <span id="start-total-stars" class="text-2xl font-bold text-amber-600">0</span>
+            </div>
+
+            <!-- Val av nivå direkt på start eller starta direkt -->
+            <div class="grid grid-cols-2 gap-3 mb-6 text-left">
+                <button id="start-diff-5" onclick="setDifficulty(5, false)"
+                    class="p-3.5 rounded-3xl border-3 transition cursor-pointer">
+                    <div class="font-bold text-base sm:text-lg">Upp till 5 + 5</div>
+                    <div class="text-xs opacity-75">Lättare tal (0–10)</div>
+                </button>
+                <button id="start-diff-10" onclick="setDifficulty(10, false)"
+                    class="p-3.5 rounded-3xl border-3 transition cursor-pointer">
+                    <div class="font-bold text-base sm:text-lg">Upp till 10 + 10</div>
+                    <div class="text-xs opacity-75">Utmaning (0–20)</div>
+                </button>
+            </div>
+
+            <button onclick="startGame()"
+                class="bubble-btn w-full py-4 sm:py-5 px-8 rounded-3xl bg-gradient-to-r from-pink-400 via-purple-400 to-indigo-400 text-white font-bold text-2xl sm:text-3xl border-2 border-white shadow-lg cursor-pointer">
+                Starta spelet! ✨
+            </button>
+        </div>
+    </div>
+
+    <!-- Huvudcontainer (Spelvyn) -->
+    <div id="game-screen" class="relative z-10 flex-1 hidden flex-col max-w-4xl w-full mx-auto px-3 sm:px-6 py-3 sm:py-5 justify-between">
+
+        <!-- TOPP-RAD: Avsluta, Titel, Stjärnor & Föräldrainställningar -->
+        <header class="flex items-center justify-between gap-2 bg-white/80 backdrop-blur-md rounded-3xl px-3 py-2.5 sm:px-6 sm:py-3 shadow-sm border-2 border-pink-100">
+            <div class="flex items-center gap-2 sm:gap-3">
+                <!-- Avsluta-knapp till startskärmen -->
+                <button onclick="exitToStart()" title="Avsluta och gå till start"
+                    class="bg-rose-50 hover:bg-rose-100 active:scale-95 border-2 border-rose-200 text-rose-600 px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl flex items-center gap-1.5 font-bold text-sm sm:text-base transition cursor-pointer">
+                    <span>🏠</span>
+                    <span>Avsluta</span>
+                </button>
+
+                <div class="hidden sm:flex items-center gap-2 pl-1">
+                    <span class="text-3xl">🦄</span>
+                    <div>
+                        <h1 class="text-xl font-bold bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 bg-clip-text text-transparent leading-tight">
+                            Räknespelet
+                        </h1>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stjärnräknare & Inställningar -->
+            <div class="flex items-center gap-2 sm:gap-3">
+                <!-- Stjärnbricka -->
+                <div class="flex items-center gap-1.5 bg-amber-50 border-2 border-amber-200 px-3 py-1.5 rounded-2xl shadow-inner">
+                    <span class="text-xl sm:text-2xl star-earned">⭐</span>
+                    <span id="total-stars" class="text-lg sm:text-xl font-bold text-amber-600">0</span>
+                </div>
+
+                <!-- Diskret inställningsknapp för föräldrar -->
+                <button onclick="openSettings()" title="Inställningar för föräldrar"
+                    class="bg-purple-50 hover:bg-purple-100 border-2 border-purple-200 text-purple-500 w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center text-xl transition active:scale-95 cursor-pointer">
+                    ⚙️
+                </button>
+            </div>
+        </header>
+
+        <!-- FRAMSTEGSMÄTARE: Enhörningen mot slottet (10 steg) -->
+        <section class="my-2 sm:my-3 bg-white/75 backdrop-blur-sm rounded-3xl px-4 py-3 sm:px-6 border-2 border-purple-100 shadow-sm">
+            <div class="flex items-center justify-between text-xs sm:text-sm font-semibold text-purple-600 mb-1.5">
+                <span>Fråga <span id="question-number">1</span> av 10</span>
+                <span id="encouragement-banner" class="text-pink-500 font-bold">Räkna tillsammans med enhörningen! ✨</span>
+            </div>
+
+            <!-- Regnbågsspår -->
+            <div class="relative h-8 sm:h-10 flex items-center">
+                <!-- Bakgrundsspår -->
+                <div class="w-full h-4 sm:h-5 bg-purple-100 rounded-full overflow-hidden p-0.5 border border-purple-200">
+                    <div id="progress-fill" class="h-full rounded-full transition-all duration-500"
+                        style="width: 0%; background: linear-gradient(90deg, #f472b6, #c084fc, #60a5fa, #4ade80, #facc15);">
+                    </div>
+                </div>
+
+                <!-- Stegprickar -->
+                <div id="progress-dots" class="absolute inset-x-3 flex justify-between pointer-events-none">
+                    <!-- Fylls med JS -->
+                </div>
+
+                <!-- Enhörning som rör sig framåt -->
+                <div id="unicorn-runner" class="unicorn-runner absolute -top-1 sm:-top-1.5 text-2xl sm:text-3xl drop-shadow"
+                    style="left: 0%;">
+                    🦄
+                </div>
+
+                <!-- Slottet vid målet -->
+                <div class="absolute -right-1 -top-1.5 sm:-top-2 text-2xl sm:text-3xl drop-shadow">
+                    🏰
+                </div>
+            </div>
+        </section>
+
+        <!-- SPELPLAN: Mattetalet + Visuella räkneobjekt -->
+        <main class="flex-1 flex flex-col justify-center my-1 sm:my-2">
+            <div class="bg-white/90 backdrop-blur-md rounded-[2rem] p-4 sm:p-6 shadow-lg border-4 border-pink-200 flex flex-col justify-between gap-4">
+
+                <!-- Talet i stora tydliga siffror -->
+                <div class="flex items-center justify-center gap-3 sm:gap-5 py-1">
+                    <div id="num1-display" class="bg-pink-100 border-3 border-pink-300 text-pink-600 text-4xl sm:text-6xl font-bold w-16 h-16 sm:w-24 sm:h-24 rounded-3xl flex items-center justify-center shadow-sm">
+                        3
+                    </div>
+                    <div class="text-4xl sm:text-6xl font-bold text-purple-400">+</div>
+                    <div id="num2-display" class="bg-sky-100 border-3 border-sky-300 text-sky-600 text-4xl sm:text-6xl font-bold w-16 h-16 sm:w-24 sm:h-24 rounded-3xl flex items-center justify-center shadow-sm">
+                        4
+                    </div>
+                    <div class="text-4xl sm:text-6xl font-bold text-purple-400">=</div>
+                    <div id="answer-box" class="bg-amber-50 border-4 border-dashed border-amber-300 text-amber-500 text-4xl sm:text-6xl font-bold w-20 h-16 sm:w-28 sm:h-24 rounded-3xl flex items-center justify-center transition-all">
+                        ?
+                    </div>
+                </div>
+
+                <!-- Visuella räkneobjekt under vardera tal -->
+                <div class="grid grid-cols-11 items-center gap-2 bg-gradient-to-r from-pink-50/80 via-purple-50/60 to-sky-50/80 rounded-3xl p-3 sm:p-4 border-2 border-purple-100 min-h-[125px] sm:min-h-[150px]">
+                    <!-- Vänster grupp (Tal 1) -->
+                    <div id="visual-group-1" class="col-span-5 flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 p-2 bg-white/70 rounded-2xl border border-pink-200 min-h-[96px] sm:min-h-[116px]">
+                        <!-- Fylls med klickbara ikoner -->
+                    </div>
+
+                    <!-- Plus-tecken i mitten -->
+                    <div class="col-span-1 flex items-center justify-center text-2xl sm:text-3xl font-bold text-purple-400">
+                        +
+                    </div>
+
+                    <!-- Höger grupp (Tal 2) -->
+                    <div id="visual-group-2" class="col-span-5 flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 p-2 bg-white/70 rounded-2xl border border-sky-200 min-h-[96px] sm:min-h-[116px]">
+                        <!-- Fylls med klickbara ikoner -->
+                    </div>
+                </div>
+
+                <!-- Liten hjälptext för pekräkning -->
+                <p class="text-center text-xs sm:text-sm text-purple-400 font-medium -mt-1">
+                    Tips: Peka på figurerna för att räkna dem en och en! ✨
+                </p>
+
+            </div>
+        </main>
+
+        <!-- SVARSALTERNATIV: 3 stora sifferkort -->
+        <section class="mt-2 sm:mt-3 mb-1">
+            <div id="options-grid" class="grid grid-cols-3 gap-3 sm:gap-5 max-w-2xl mx-auto">
+                <!-- 3 svarsknappar genereras av JavaScript -->
+            </div>
+        </section>
+
+    </div>
+
+    <!-- SLUTSKÄRM / FIRANDE VID AVKLARAD RUNDA (10/10) -->
+    <div id="celebration-modal" class="fixed inset-0 z-40 bg-purple-950/50 backdrop-blur-md hidden items-center justify-center p-4">
+        <div class="bg-white rounded-[2.5rem] max-w-md w-full p-6 sm:p-8 text-center border-4 border-amber-300 shadow-2xl relative overflow-hidden">
+            <div class="text-6xl sm:text-7xl mb-2 animate-bounce">🦄👑🌈</div>
+            <h2 class="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-pink-500 via-purple-500 to-amber-500 bg-clip-text text-transparent mb-2">
+                Hurra! Vilken stjärna!
+            </h2>
+            <p class="text-slate-600 text-base sm:text-lg mb-5">
+                Du klarade alla 10 talen och hjälpte enhörningen hela vägen till regnbågsslottet!
+            </p>
+
+            <!-- Intjänade stjärnor i denna runda -->
+            <div class="bg-amber-50 border-2 border-amber-200 rounded-3xl p-4 mb-6">
+                <p class="text-sm font-semibold text-amber-700 uppercase tracking-wide mb-1">Dina guldstjärnor i rundan</p>
+                <div class="flex items-center justify-center gap-2 text-3xl sm:text-4xl font-bold text-amber-500">
+                    <span>⭐</span>
+                    <span id="round-stars-earned">30</span>
+                </div>
+            </div>
+
+            <div class="space-y-3">
+                <button onclick="startNewRound()"
+                    class="bubble-btn w-full py-4 px-6 rounded-3xl bg-gradient-to-r from-pink-400 via-purple-400 to-indigo-400 text-white font-bold text-xl sm:text-2xl border-2 border-white shadow-lg cursor-pointer">
+                    Spela en runda till! ✨
+                </button>
+                <button onclick="exitToStart()"
+                    class="w-full py-3 px-6 rounded-3xl bg-purple-50 hover:bg-purple-100 text-purple-600 font-bold text-base sm:text-lg border-2 border-purple-200 transition cursor-pointer">
+                    Tillbaka till start 🏠
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- INSTÄLLNINGAR FÖR FÖRÄLDRAR -->
+    <div id="settings-modal" class="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 border-2 border-purple-200 shadow-2xl">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-bold text-purple-800 flex items-center gap-2">
+                    <span>⚙️</span> Föräldrainställningar
+                </h3>
+                <button onclick="closeSettings()" class="text-slate-400 hover:text-slate-600 text-2xl font-bold px-2">✕</button>
+            </div>
+
+            <div class="space-y-4">
+                <!-- Svårighetsgrad -->
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">Välj talområde (Svårighetsgrad)</label>
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <button id="diff-5" onclick="setDifficulty(5, true)"
+                            class="p-3 rounded-2xl border-2 text-center font-semibold transition">
+                            <div class="text-lg">Upp till 5 + 5</div>
+                            <div class="text-xs opacity-75">Svar 0–10 (Nybörjare)</div>
+                        </button>
+                        <button id="diff-10" onclick="setDifficulty(10, true)"
+                            class="p-3 rounded-2xl border-2 text-center font-semibold transition">
+                            <div class="text-lg">Upp till 10 + 10</div>
+                            <div class="text-xs opacity-75">Svar 0–20 (Standard)</div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Ljudeffekter -->
+                <div class="flex items-center justify-between bg-purple-50 p-3.5 rounded-2xl border border-purple-100">
+                    <div>
+                        <div class="font-semibold text-slate-800">Ljudeffekter</div>
+                        <div class="text-xs text-slate-500">Glada pling och melodier</div>
+                    </div>
+                    <button id="toggle-sound-btn" onclick="toggleSound()"
+                        class="px-4 py-2 rounded-xl font-bold text-sm transition">
+                        På 🔊
+                    </button>
+                </div>
+
+                <!-- Nollställ stjärnor -->
+                <div class="pt-2 border-t border-slate-100 flex items-center justify-between">
+                    <span class="text-xs text-slate-500">Totalt insamlade stjärnor: <strong id="settings-total-stars">0</strong></span>
+                    <button onclick="resetProgress()" class="text-xs text-rose-500 hover:underline font-semibold">
+                        Börja om runda
+                    </button>
+                </div>
+            </div>
+
+            <button onclick="closeSettings()"
+                class="mt-6 w-full py-3 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-lg transition">
+                Spara & Stäng
+            </button>
+        </div>
+    </div>
+
+    <script>
+        /* ==========================================================================
+           1. SPELSTATE & KONFIGURATION
+           ========================================================================== */
+        const state = {
+            maxOperand: 10,          // 5 (upp till 5+5) eller 10 (upp till 10+10)
+            soundEnabled: true,
+            currentQuestionIndex: 0, // 0 till 9 (10 frågor per runda)
+            totalQuestions: 10,
+            totalStars: 0,
+            roundStars: 0,
+            mistakesOnCurrent: 0,
+            num1: 3,
+            num2: 4,
+            correctAnswer: 7,
+            currentTheme: null,
+            isTransitioning: false,
+            usedEquations: new Set() // Undvik exakt samma tal direkt efter varandra
+        };
+
+        // Barnvänliga och tydliga visuella teman som roterar mellan talen
+        const visualThemes = [
+            { emoji: '🍎', name: 'äpplen' },
+            { emoji: '⭐', name: 'stjärnor' },
+            { emoji: '🦄', name: 'enhörningar' },
+            { emoji: '🍓', name: 'jordgubbar' },
+            { emoji: '🌈', name: 'regnbågar' },
+            { emoji: '💖', name: 'hjärtan' },
+            { emoji: '🧁', name: 'muffins' },
+            { emoji: '🦋', name: 'fjärilar' },
+            { emoji: '🌸', name: 'blommor' },
+            { emoji: '🎈', name: 'ballonger' }
+        ];
+
+        const praiseMessages = [
+            "Fantastiskt bra jobbat! 🌟",
+            "Helt rätt, Prinsessan Chloe! 👑",
+            "Superduktigt räknat! 🦄",
+            "Magiskt bra! ✨",
+            "Vilken mattestjärna du är! 🌈",
+            "Yay! Helt rätt svar! 💖"
+        ];
+
+        /* ==========================================================================
+           2. WEB AUDIO API (MJUKA, GLADA LJUDEFFEKTER UTAN EXTERNA FILER)
+           ========================================================================== */
+        let audioCtx = null;
+
+        function getAudioContext() {
+            if (!audioCtx) {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (AudioContextClass) {
+                    audioCtx = new AudioContextClass();
+                }
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
+        // Spela en enkel mjuk ton
+        function playTone(freq, startTime, duration, type = 'sine', volume = 0.18) {
+            if (!state.soundEnabled) return;
+            const ctx = getAudioContext();
+            if (!ctx) return;
+
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, startTime);
+
+            gain.gain.setValueAtTime(0.001, startTime);
+            gain.gain.exponentialRampToValueAtTime(volume, startTime + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc.start(startTime);
+            osc.stop(startTime + duration + 0.02);
+        }
+
+        // Glatt pling när man pekar på en figur för att räkna
+        function playCountPop(index) {
+            if (!state.soundEnabled) return;
+            const ctx = getAudioContext();
+            if (!ctx) return;
+            const now = ctx.currentTime;
+            // Stigande tonhöjd när barnet räknar 1, 2, 3...
+            const baseFreq = 380 + (index * 28);
+            playTone(Math.min(baseFreq, 920), now, 0.14, 'triangle', 0.14);
+        }
+
+        // Glad fanfar/pling vid rätt svar
+        function playCorrectSound() {
+            if (!state.soundEnabled) return;
+            const ctx = getAudioContext();
+            if (!ctx) return;
+            const now = ctx.currentTime;
+            const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+            notes.forEach((freq, i) => {
+                playTone(freq, now + i * 0.09, 0.28, 'triangle', 0.2);
+            });
+        }
+
+        // Mjukt, uppmuntrande "försök igen"-ljud (inte läskigt eller hårt)
+        function playGentleTryAgainSound() {
+            if (!state.soundEnabled) return;
+            const ctx = getAudioContext();
+            if (!ctx) return;
+            const now = ctx.currentTime;
+            playTone(330, now, 0.16, 'sine', 0.14);
+            playTone(293.66, now + 0.14, 0.22, 'sine', 0.14);
+        }
+
+        // Stor segerfanfar vid avklarad runda
+        function playVictoryFanfare() {
+            if (!state.soundEnabled) return;
+            const ctx = getAudioContext();
+            if (!ctx) return;
+            const now = ctx.currentTime;
+            const melody = [
+                { f: 523.25, t: 0, d: 0.15 },
+                { f: 659.25, t: 0.15, d: 0.15 },
+                { f: 783.99, t: 0.30, d: 0.15 },
+                { f: 1046.50, t: 0.48, d: 0.35 },
+                { f: 783.99, t: 0.85, d: 0.15 },
+                { f: 1046.50, t: 1.02, d: 0.55 }
+            ];
+            melody.forEach(n => playTone(n.f, now + n.t, n.d, 'triangle', 0.22));
+        }
+
+        /* ==========================================================================
+           3. GENERERING AV MATTETAL & PEDAGOGISKA SVARSALTERNATIV
+           ========================================================================== */
+        function generateQuestion() {
+            state.isTransitioning = false;
+            state.mistakesOnCurrent = 0;
+
+            // Välj tal beroende på inställning (0..5 eller 0..10)
+            // Vi gör 0 lite mer sällsynt så barnet får räkna faktiska objekt oftast
+            let a, b, key;
+            let attempts = 0;
+            do {
+                a = Math.random() < 0.12 ? 0 : Math.floor(Math.random() * state.maxOperand) + 1;
+                b = Math.random() < 0.12 ? 0 : Math.floor(Math.random() * state.maxOperand) + 1;
+                key = `${a}+${b}`;
+                attempts++;
+            } while (state.usedEquations.has(key) && attempts < 20);
+
+            state.usedEquations.add(key);
+            if (state.usedEquations.size > 15) {
+                state.usedEquations.clear();
+            }
+
+            state.num1 = a;
+            state.num2 = b;
+            state.correctAnswer = a + b;
+
+            // Välj ett nytt visuellt tema (frukt/stjärnor/enhörningar)
+            const availableThemes = visualThemes.filter(t => t !== state.currentTheme);
+            state.currentTheme = availableThemes[Math.floor(Math.random() * availableThemes.length)];
+
+            renderQuestion();
+        }
+
+        function generateOptions(correct) {
+            const maxPossible = state.maxOperand * 2;
+            const options = new Set([correct]);
+
+            // Pedagogiska distraktorer: tal nära det rätta svaret (+/- 1, +/- 2)
+            const nearbyOffsets = [-2, -1, 1, 2, -3, 3];
+            // Blanda offsets
+            nearbyOffsets.sort(() => Math.random() - 0.5);
+
+            for (const offset of nearbyOffsets) {
+                if (options.size >= 3) break;
+                const candidate = correct + offset;
+                if (candidate >= 0 && candidate <= maxPossible) {
+                    options.add(candidate);
+                }
+            }
+
+            // Fyll på med slumpmässiga tal i intervallet om det behövs
+            while (options.size < 3) {
+                const rand = Math.floor(Math.random() * (maxPossible + 1));
+                options.add(rand);
+            }
+
+            return Array.from(options).sort(() => Math.random() - 0.5);
+        }
+
+        /* ==========================================================================
+           4. RENDERING AV GRÄNSSNITTET
+           ========================================================================== */
+        function renderQuestion() {
+            // Uppdatera siffror
+            document.getElementById('num1-display').textContent = state.num1;
+            document.getElementById('num2-display').textContent = state.num2;
+
+            const answerBox = document.getElementById('answer-box');
+            answerBox.textContent = '?';
+            answerBox.className = 'bg-amber-50 border-4 border-dashed border-amber-300 text-amber-500 text-4xl sm:text-6xl font-bold w-20 h-16 sm:w-28 sm:h-24 rounded-3xl flex items-center justify-center transition-all';
+
+            // Uppdatera frågeräknare och framstegsmätare
+            document.getElementById('question-number').textContent = state.currentQuestionIndex + 1;
+            document.getElementById('encouragement-banner').textContent = `Räkna ${state.currentTheme.name}! ✨`;
+            updateProgressBar();
+
+            // Rendera visuella räkneobjekt i två tydliga grupper
+            renderVisualGroup('visual-group-1', state.num1, 0);
+            renderVisualGroup('visual-group-2', state.num2, state.num1);
+
+            // Rendera 3 stora svarsknappar
+            const options = generateOptions(state.correctAnswer);
+            const grid = document.getElementById('options-grid');
+            grid.innerHTML = '';
+
+            const cardColors = [
+                'bg-gradient-to-b from-pink-100 to-pink-200 border-pink-300 text-pink-700',
+                'bg-gradient-to-b from-purple-100 to-purple-200 border-purple-300 text-purple-700',
+                'bg-gradient-to-b from-sky-100 to-sky-200 border-sky-300 text-sky-700'
+            ];
+
+            options.forEach((value, idx) => {
+                const btn = document.createElement('button');
+                btn.className = `bubble-btn ${cardColors[idx % cardColors.length]} border-4 rounded-3xl py-4 sm:py-6 text-4xl sm:text-5xl font-bold flex items-center justify-center cursor-pointer`;
+                btn.textContent = value;
+                btn.onclick = () => handleAnswerClick(btn, value);
+                grid.appendChild(btn);
+            });
+        }
+
+        function renderVisualGroup(containerId, count, startIndex) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+
+            if (count === 0) {
+                container.classList.add('border-dashed', 'bg-white/40');
+                const emptyWrap = document.createElement('div');
+                emptyWrap.className = 'flex flex-col items-center justify-center text-purple-300 select-none py-1';
+                emptyWrap.innerHTML = `
+                    <span class="text-2xl sm:text-3xl opacity-50 mb-0.5">🫧</span>
+                    <span class="text-xs sm:text-sm font-semibold tracking-wide text-purple-400/80">Tomt (0)</span>
+                `;
+                container.appendChild(emptyWrap);
+                return;
+            }
+
+            container.classList.remove('border-dashed', 'bg-white/40');
+
+            // Anpassa ikonstorlek så att upp till 10 objekt får gott om plats utan trängsel
+            const sizeClass = count <= 5
+                ? 'text-3xl sm:text-4xl'
+                : 'text-2xl sm:text-3xl';
+
+            for (let i = 0; i < count; i++) {
+                const item = document.createElement('span');
+                const globalIdx = startIndex + i;
+                item.className = `count-item ${sizeClass} inline-flex items-center justify-center p-0.5 rounded-xl select-none`;
+                item.style.animationDelay = `${globalIdx * 0.045}s`;
+                item.textContent = state.currentTheme.emoji;
+
+                // Gör varje figur klickbar så barnet kan pekräkna med ljud och studs!
+                item.onclick = () => {
+                    playCountPop(globalIdx);
+                    item.classList.remove('tapped');
+                    void item.offsetWidth; // Tvinga omstart av animation
+                    item.classList.add('tapped');
+                    setTimeout(() => item.classList.remove('tapped'), 250);
+                };
+
+                container.appendChild(item);
+            }
+        }
+
+        /* ==========================================================================
+           5. SVARSHANTERING & BELÖNINGSSYSTEM
+           ========================================================================== */
+        function handleAnswerClick(buttonEl, selectedValue) {
+            if (state.isTransitioning || buttonEl.disabled) return;
+            getAudioContext();
+
+            if (selectedValue === state.correctAnswer) {
+                // RÄTT SVAR!
+                state.isTransitioning = true;
+                buttonEl.classList.add('pop-correct');
+
+                // Visa svaret i frågerutan
+                const answerBox = document.getElementById('answer-box');
+                answerBox.textContent = state.correctAnswer;
+                answerBox.className = 'bg-emerald-100 border-4 border-emerald-400 text-emerald-600 text-4xl sm:text-6xl font-bold w-20 h-16 sm:w-28 sm:h-24 rounded-3xl flex items-center justify-center scale-110 transition-all shadow-md';
+
+                // Beräkna stjärnor: 3 stjärnor på första försöket, annars 2 eller 1
+                const starsWon = state.mistakesOnCurrent === 0 ? 3 : (state.mistakesOnCurrent === 1 ? 2 : 1);
+                state.totalStars += starsWon;
+                state.roundStars += starsWon;
+                updateStarDisplay();
+
+                // Uppmuntrande text och ljud
+                const praise = praiseMessages[Math.floor(Math.random() * praiseMessages.length)];
+                document.getElementById('encouragement-banner').textContent = `${praise} (+${starsWon} ⭐)`;
+                playCorrectSound();
+
+                // Liten glädjekonfetti
+                burstConfetti(35);
+
+                // Gå vidare till nästa fråga eller slutskärm
+                setTimeout(() => {
+                    state.currentQuestionIndex++;
+                    if (state.currentQuestionIndex >= state.totalQuestions) {
+                        updateProgressBar(true);
+                        showRoundCelebration();
+                    } else {
+                        generateQuestion();
+                    }
+                }, 1550);
+
+            } else {
+                // FEL SVAR: Mjuk skakning, tona ner knappen och låt barnet försöka igen
+                state.mistakesOnCurrent++;
+                buttonEl.disabled = true;
+                buttonEl.classList.add('shake-wrong');
+
+                playGentleTryAgainSound();
+                document.getElementById('encouragement-banner').textContent = "Nästan! Prova att räkna figurerna och testa igen 💪✨";
+            }
+        }
+
+        function updateStarDisplay() {
+            const el = document.getElementById('total-stars');
+            if (el) el.textContent = state.totalStars;
+            const startEl = document.getElementById('start-total-stars');
+            if (startEl) startEl.textContent = state.totalStars;
+            const settingsEl = document.getElementById('settings-total-stars');
+            if (settingsEl) settingsEl.textContent = state.totalStars;
+            saveSettings();
+        }
+
+        function updateProgressBar(completed = false) {
+            const step = completed ? state.totalQuestions : state.currentQuestionIndex;
+            const percent = (step / state.totalQuestions) * 100;
+
+            document.getElementById('progress-fill').style.width = `${percent}%`;
+            // Enhörningen rör sig från 0% till ca 88% (strax intill slottet)
+            const unicornPos = Math.min(percent * 0.88, 88);
+            document.getElementById('unicorn-runner').style.left = `${unicornPos}%`;
+        }
+
+        function initProgressDots() {
+            const dotsContainer = document.getElementById('progress-dots');
+            dotsContainer.innerHTML = '';
+            for (let i = 0; i < state.totalQuestions; i++) {
+                const dot = document.createElement('span');
+                dot.className = 'w-2 h-2 rounded-full bg-white/80 inline-block';
+                dotsContainer.appendChild(dot);
+            }
+        }
+
+        function startGame() {
+            getAudioContext();
+            playCountPop(3);
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('start-screen').classList.remove('flex');
+            const gameScreen = document.getElementById('game-screen');
+            gameScreen.classList.remove('hidden');
+            gameScreen.classList.add('flex');
+
+            state.currentQuestionIndex = 0;
+            state.roundStars = 0;
+            generateQuestion();
+        }
+
+        function exitToStart() {
+            const celebrationModal = document.getElementById('celebration-modal');
+            celebrationModal.classList.add('hidden');
+            celebrationModal.classList.remove('flex');
+
+            document.getElementById('game-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('flex');
+
+            const startScreen = document.getElementById('start-screen');
+            startScreen.classList.remove('hidden');
+            startScreen.classList.add('flex');
+            updateStarDisplay();
+            updateSettingsUI();
+        }
+
+        function showRoundCelebration() {
+            document.getElementById('round-stars-earned').textContent = state.roundStars;
+            const modal = document.getElementById('celebration-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+
+            playVictoryFanfare();
+            burstConfetti(140);
+        }
+
+        function startNewRound() {
+            const modal = document.getElementById('celebration-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+
+            state.currentQuestionIndex = 0;
+            state.roundStars = 0;
+            generateQuestion();
+        }
+
+        /* ==========================================================================
+           6. KONFETTI-ANIMATION (CANVAS)
+           ========================================================================== */
+        let confettiParticles = [];
+        let confettiAnimating = false;
+
+        function burstConfetti(amount = 60) {
+            const canvas = document.getElementById('confetti-canvas');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const colors = ['#f472b6', '#c084fc', '#60a5fa', '#4ade80', '#facc15', '#fb923c'];
+
+            for (let i = 0; i < amount; i++) {
+                confettiParticles.push({
+                    x: canvas.width * (0.2 + Math.random() * 0.6),
+                    y: canvas.height * 0.45,
+                    vx: (Math.random() - 0.5) * 14,
+                    vy: -Math.random() * 13 - 4,
+                    size: Math.random() * 9 + 6,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    rotation: Math.random() * 360,
+                    vRot: (Math.random() - 0.5) * 12,
+                    gravity: 0.32,
+                    life: 110 + Math.random() * 40
+                });
+            }
+
+            if (!confettiAnimating) {
+                confettiAnimating = true;
+                requestAnimationFrame(updateConfetti);
+            }
+        }
+
+        function updateConfetti() {
+            const canvas = document.getElementById('confetti-canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (let i = confettiParticles.length - 1; i >= 0; i--) {
+                const p = confettiParticles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += p.gravity;
+                p.rotation += p.vRot;
+                p.life--;
+
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                ctx.rotate((p.rotation * Math.PI) / 180);
+                ctx.fillStyle = p.color;
+                ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.65);
+                ctx.restore();
+
+                if (p.life <= 0 || p.y > canvas.height + 20) {
+                    confettiParticles.splice(i, 1);
+                }
+            }
+
+            if (confettiParticles.length > 0) {
+                requestAnimationFrame(updateConfetti);
+            } else {
+                confettiAnimating = false;
+            }
+        }
+
+        /* ==========================================================================
+           7. FÖRÄLDRAINSTÄLLNINGAR & LOKAL LAGRING
+           ========================================================================== */
+        function openSettings() {
+            updateSettingsUI();
+            const modal = document.getElementById('settings-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeSettings() {
+            const modal = document.getElementById('settings-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function setDifficulty(maxVal, regenerate = true) {
+            state.maxOperand = maxVal;
+            state.usedEquations.clear();
+            updateSettingsUI();
+            saveSettings();
+            if (regenerate) {
+                generateQuestion();
+            }
+        }
+
+        function toggleSound() {
+            state.soundEnabled = !state.soundEnabled;
+            updateSettingsUI();
+            saveSettings();
+            if (state.soundEnabled) playCountPop(2);
+        }
+
+        function resetProgress() {
+            state.currentQuestionIndex = 0;
+            state.roundStars = 0;
+            closeSettings();
+            generateQuestion();
+        }
+
+        function updateSettingsUI() {
+            const d5 = document.getElementById('diff-5');
+            const d10 = document.getElementById('diff-10');
+            const sd5 = document.getElementById('start-diff-5');
+            const sd10 = document.getElementById('start-diff-10');
+
+            const activeClass = 'p-3.5 rounded-3xl border-3 border-purple-500 bg-purple-100 text-purple-800 transition cursor-pointer shadow-sm';
+            const inactiveClass = 'p-3.5 rounded-3xl border-3 border-slate-200 bg-white/80 text-slate-600 hover:border-purple-200 transition cursor-pointer';
+
+            if (state.maxOperand === 5) {
+                if (d5) d5.className = 'p-3 rounded-2xl border-2 border-purple-500 bg-purple-100 text-purple-800 text-center font-semibold transition';
+                if (d10) d10.className = 'p-3 rounded-2xl border-2 border-slate-200 bg-white text-slate-600 text-center font-semibold transition';
+                if (sd5) sd5.className = activeClass;
+                if (sd10) sd10.className = inactiveClass;
+            } else {
+                if (d10) d10.className = 'p-3 rounded-2xl border-2 border-purple-500 bg-purple-100 text-purple-800 text-center font-semibold transition';
+                if (d5) d5.className = 'p-3 rounded-2xl border-2 border-slate-200 bg-white text-slate-600 text-center font-semibold transition';
+                if (sd10) sd10.className = activeClass;
+                if (sd5) sd5.className = inactiveClass;
+            }
+
+            const soundBtn = document.getElementById('toggle-sound-btn');
+            if (soundBtn) {
+                soundBtn.textContent = state.soundEnabled ? 'På 🔊' : 'Av 🔇';
+                soundBtn.className = state.soundEnabled
+                    ? 'px-4 py-2 rounded-xl font-bold text-sm bg-emerald-500 text-white transition'
+                    : 'px-4 py-2 rounded-xl font-bold text-sm bg-slate-200 text-slate-600 transition';
+            }
+
+            const settingsStars = document.getElementById('settings-total-stars');
+            if (settingsStars) settingsStars.textContent = state.totalStars;
+        }
+
+        function saveSettings() {
+            try {
+                localStorage.setItem('chloe_raknespelet_v1', JSON.stringify({
+                    maxOperand: state.maxOperand,
+                    soundEnabled: state.soundEnabled,
+                    totalStars: state.totalStars
+                }));
+            } catch (e) { /* Ignorera om localStorage är begränsat */ }
+        }
+
+        function loadSettings() {
+            try {
+                const raw = localStorage.getItem('chloe_raknespelet_v1');
+                if (raw) {
+                    const saved = JSON.parse(raw);
+                    if (saved.maxOperand === 5 || saved.maxOperand === 10) state.maxOperand = saved.maxOperand;
+                    if (typeof saved.soundEnabled === 'boolean') state.soundEnabled = saved.soundEnabled;
+                    if (typeof saved.totalStars === 'number') state.totalStars = saved.totalStars;
+                }
+            } catch (e) { /* Ignorera */ }
+        }
+
+        /* ==========================================================================
+           8. INITIERING VID SIDLADDNING
+           ========================================================================== */
+        window.onload = function () {
+            loadSettings();
+            updateStarDisplay();
+            updateSettingsUI();
+            initProgressDots();
+        };
+
+        window.addEventListener('resize', () => {
+            const canvas = document.getElementById('confetti-canvas');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    </script>
+</body>
+</html>
